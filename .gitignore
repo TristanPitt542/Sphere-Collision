@@ -1,0 +1,94 @@
+## Visual Studio ##
+.vs/
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Build Directories ##
+[Bb]in/
+[Bb]uild/
+[Dd]ebug*/
+[Rr]elease*/
+[xX]64/
+[xX]86/
+[Oo]ut/
+[Oo]bj/
+ipch/
+
+## CMake (if you use it) ##
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.dir/
+*.cbp
+*.code-workspace
+
+## Libraries and Dependencies ##
+# Ignore downloaded or precompiled dependencies
+deps/
+external/
+third_party/
+vendor/
+lib/
+*.lib
+*.a
+*.pdb
+*.exp
+*.obj
+*.dll
+*.so
+*.dylib
+
+## ImGui, GLFW, GLEW ##
+# Ignore build artifacts if libraries are built from source
+imgui/examples/example_*/*
+imgui/backends/*/*.obj
+glfw/build/
+glew/build/
+*.vcxproj.filters
+
+## Logs and Databases ##
+*.log
+*.tlog
+*.lastbuildstate
+*.sdf
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+
+## IDE ##
+*.code-workspace
+*.vscode/
+*.ncb
+*.aps
+*.idb
+*.opensdf
+*.tlog
+
+## OS Generated Files ##
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+## Other ##
+*.tmp
+*.cache
+*.bak
+*.old
+*.orig
+
+## Project-specific (optional) ##
+# Ignore save files or runtime output
+saves/
+logs/
+screenshots/
+temp/
