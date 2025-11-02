@@ -58,6 +58,8 @@ private:
 
 	bool m_wireframe{ false };
 	bool m_cullFace{ false };
+
+
 	//phyisics spheres
 	std::vector<PhysicsSphere> c_physicsSpheres;
 
@@ -67,8 +69,12 @@ public:
 	Renderer();
 	~Renderer();
 
+	bool m_isPaused = false;
+	bool m_shouldRestart = false;
+
 	//gravity
-	float gravity = -9.81f;
+	glm::vec3 Initialgravity = glm::vec3(0.0f, -98.1f, 0.0f);
+	glm::vec3 gravity = glm::vec3(0.0f, -98.1f, 0.0f);
 
 	float radius = 50;
 	float mass = 50;
@@ -92,7 +98,7 @@ public:
 
 
 	// Create and / or load geometry, this is like 'level load'
-	bool InitialiseGeometry(int asd);
+	bool InitialiseGeometry();
 	
 	bool Renderer::sphereTriangleCollision(const glm::vec3& sphereCenter, float sphereRadius, const Triangle& triangle);
 

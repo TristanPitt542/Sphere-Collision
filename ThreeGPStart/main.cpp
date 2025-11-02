@@ -5,7 +5,6 @@
 #include "Helper.h"
 #include "Simulation.h"
 
-// Note: you should not need to edit any of this
 int main()
 {	
 	// Allows cout to go to the output pane in Visual Studio rather than have to open a console window
@@ -35,16 +34,8 @@ int main()
 		auto currentTime = std::chrono::steady_clock::now();
 		std::chrono::duration<double> elapsedTime = currentTime - startTime;
 
-
 		if (!simulation.Update(window))
 			break;
-
-		// If 10 seconds have passed, reset the simulation
-		if ((elapsedTime.count() >= 5.0f) && (simulation.GetRound() < 3))
-		{
-			simulation.Restart();
-			startTime = std::chrono::steady_clock::now();
-		}
 
 		// GLFW updating
 		glfwSwapBuffers(window);

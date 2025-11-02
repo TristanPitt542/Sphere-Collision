@@ -608,18 +608,20 @@ void Renderer::DefineGUI()
 		ImGui::Checkbox("Wireframe", &m_wireframe);
 		ImGui::Checkbox("Cull Face", &m_cullFace);
 
+		if (ImGui::Button("Restart"))
+		{
+			m_shouldRestart = true;
+		}
+
+		//Pause
+		ImGui::Checkbox("Pause", &m_isPaused);
+		
+		//Gravity
+		ImGui::InputFloat("Gravity", &gravity.y, 0.1f, 1.0f, "%.2f");
+		if (ImGui::Button("ResetGravity"))
+			gravity = Initialgravity;
+
 		// Display application stats
-		if (ImGui::ArrowButton("UP", ImGuiDir_Up))
-		{
-			gravity *= 0.5f;
-		}
-		ImGui::SameLine();
-		ImGui::Text("Current Gravity: %.2f", gravity);
-		ImGui::SameLine();
-		if (ImGui::ArrowButton("Down", ImGuiDir_Down))
-		{
-			gravity *= 2.0f;
-		}
 		ImGui::Text("Application average %.0f ms/frame (%.0f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 		ImGui::End();
@@ -663,7 +665,7 @@ bool Renderer::CreateProgram()
 }
 
 // Load / create geometry into OpenGL buffers	
-bool Renderer::InitialiseGeometry(int asd) 
+bool Renderer::InitialiseGeometry() 
 {
 	// Load and compile shaders into m_program
 	if (!CreateProgram())
@@ -687,25 +689,9 @@ bool Renderer::InitialiseGeometry(int asd)
 	// Right Wall
 	Terrain(glm::vec3(2900.0f, 450.0f, 0.0f), 10, 50, glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f)), spacing, false);
 
-	switch (asd)
-	{
-		// Create physics spheres with initial positions, velocities, radius, mass and colour
-	case 0:
-		c_physicsSpheres.emplace_back(glm::vec3(2000.0f, 650.0f, 400.0f), glm::vec3(-30.0f, 10.0f, 0.0f), 200.0f, 50.0f, 0.05f); // Sphere 1
-		c_physicsSpheres.emplace_back(glm::vec3(-2000.0f, 650.0f, 400.0f), glm::vec3(20.0f, 10.0f, 0.0f), 150.0f, 60.0f, 0.05f); // Sphere 2
-		break;
-	case 1:
-		c_physicsSpheres.emplace_back(glm::vec3(2000.0f, 650.0f, 400.0f), glm::vec3(-20.0f, 10.0f, -40.0f), 200.0f, 50.0f, 0.05f); // Sphere 1
-		c_physicsSpheres.emplace_back(glm::vec3(-2000.0f, 650.0f, 400.0f), glm::vec3(30.0f, 10.0f, -30.0f), 200.0f, 60.0f, 0.05f); // Sphere 2
-		break;
-	case 2:
-		c_physicsSpheres.emplace_back(glm::vec3(100.0f, 550.0f, 400.0f), glm::vec3(-40.0f, 0.0f, -50.0f), 150.0f, 30.0f, 0.08f); // Sphere 1
-		c_physicsSpheres.emplace_back(glm::vec3(-1500.0f, 550.0f, 400.0f), glm::vec3(30.0f, 0.0f, 10.0f), 150.0f, 30.0f, 0.08f); // Sphere 2
-		c_physicsSpheres.emplace_back(glm::vec3(0.0f, 550.0f, -400.0f), glm::vec3(10.0f, 0.0f, 40.0f), 150.0f, 30.0f, 0.08f); // Sphere 3
-		break;
-	default:
-		c_physicsSpheres.emplace_back(glm::vec3(0, 600, 0), glm::vec3(0, 0, 0), 200.0f, 20.0f, 0.05f); // Sphere 1
-	}
+	//Spheres
+	c_physicsSpheres.emplace_back(glm::vec3(2000.0f, 650.0f, 400.0f), glm::vec3(0.0f, 0.0f, 0.0f), 200.0f, 50.0f, 0.05f); // Sphere 1
+	c_physicsSpheres.emplace_back(glm::vec3(-2000.0f, 650.0f, 400.0f), glm::vec3(0.0f, 0.0f, 0.0f), 150.0f, 60.0f, 0.05f); // Sphere 2
 
 	// Create visual representations for spheres with different colors
 	for (auto& sphere : c_physicsSpheres)
@@ -719,46 +705,33 @@ bool Renderer::InitialiseGeometry(int asd)
 // Handle collision response
 void handleCollision(PhysicsSphere& a, PhysicsSphere& b)
 {
-	// Calculate the collision normal
-	glm::vec3 collisionNormal = glm::normalize(b.position - a.position);
+	glm::vec3 normal = b.position - a.position;
+	float dist = glm::length(normal);
+	if (dist == 0.0f) return; // prevent divide by zero
+	normal /= dist;
 
-	// Calculate the overlap distance
-	float overlap = (a.radius + b.radius) - glm::length(a.position - b.position);
-
-	// Move spheres apart based on overlap
-	if (overlap > 0)
+	// Position correction
+	float overlap = (a.radius + b.radius) - dist;
+	if (overlap > 0.0f)
 	{
-		glm::vec3 separation = collisionNormal * (overlap / 2.0f);
-		a.position -= separation;
-		b.position += separation;
+		float totalMass = a.mass + b.mass;
+		a.position -= normal * (overlap * (b.mass / totalMass));
+		b.position += normal * (overlap * (a.mass / totalMass));
 	}
 
-	// Calculate relative velocity
+	// Relative velocity
 	glm::vec3 relativeVelocity = b.velocity - a.velocity;
+	float velAlongNormal = glm::dot(relativeVelocity, normal);
+	if (velAlongNormal > 0.0f) return;
 
-	// Calculate the velocity along the collision normal
-	float velocityAlongNormal = glm::dot(relativeVelocity, collisionNormal);
+	// Impulse calculation
+	float e = std::min(a.restitution, b.restitution);
+	float j = -(1.0f + e) * velAlongNormal / (1.0f / a.mass + 1.0f / b.mass);
+	glm::vec3 impulse = j * normal;
 
-	// Do not resolve if the spheres are separating
-	if (velocityAlongNormal > 0)
-	{
-		return;
-	}
-
-	//coefficient of restitution(bounciness)
-	float e = a.restitution;
-
-	//Unit vector giving direction of impulse
-	glm::vec3 N = (b.position - a.position) / (a.radius + b.radius);
-
-	//impulse
-	glm::vec3 J = (abs(relativeVelocity) * (e + 1) / (1 / a.mass) + (1 / b.mass));
-
-	//new velocities
-	b.velocity += (J * N) / b.mass;
-	a.velocity -= (J * N) / a.mass;
-	cout << "collison " << endl;
-	return;
+	// Apply impulse
+	a.velocity -= impulse / a.mass;
+	b.velocity += impulse / b.mass;
 }
 
 //Sphere2Sphere Collision Check
@@ -834,79 +807,82 @@ bool Renderer::sphereTriangleCollision(const glm::vec3& sphereCenter, float sphe
 
 void Renderer::handleTriangleCollision(PhysicsSphere& sphere, const Triangle& triangle)
 {
-	// Calculate the closest point on the triangle to the sphere's center
 	glm::vec3 closestPoint = closestPointOnTriangle(sphere.position, triangle);
-
-	// Calculate the vector from the sphere's position to the closest point
-	glm::vec3 displacement = closestPoint - sphere.position;
-
-	// Check the distance between the sphere's position and the closest point
+	glm::vec3 displacement = sphere.position - closestPoint; // now points **out of triangle**
 	float distance = glm::length(displacement);
 
-	// If the distance is less than the sphere's radius, we have a collision
-	if (distance < sphere.radius)
+	if (distance < sphere.radius && distance > 0.0001f) // avoid divide by zero
 	{
-		// Calculate the overlap (penetration depth)
+		glm::vec3 normal = glm::normalize(displacement);
+
+		// Position correction: move sphere out of triangle
 		float overlap = sphere.radius - distance;
+		sphere.position += normal * overlap;
 
-		// Resolve the collision by moving the sphere out of the triangle
-		sphere.position -= glm::normalize(displacement) * overlap;
+		// Relative velocity along normal
+		float velAlongNormal = glm::dot(sphere.velocity, normal);
 
-		// Calculate the reflection vector
-		glm::vec3 triangleNormal = triangle.normal;
-		glm::vec3 incomingVelocity = sphere.velocity;
+		// Only apply impulse if moving into triangle
+		if (velAlongNormal < 0.0f)
+		{
+			float e = sphere.restitution;
+			float j = -(1.0f + e) * velAlongNormal;
 
-		// Reflect the velocity based on the normal
-		sphere.velocity = incomingVelocity - (2.0f * glm::dot(incomingVelocity, triangleNormal) * triangleNormal);
+			// Cap impulse to prevent huge spikes
+			float maxImpulse = 50.0f; // tweak as needed
+			j = glm::clamp(j, -maxImpulse, maxImpulse);
 
-		// Apply bounciness factor
-		if (sphere.velocity.y <= 2.0f)
-			sphere.velocity.y = 0;
-		else
-			//bounce
-			sphere.velocity.y *= sphere.restitution;
+			sphere.velocity += (j / sphere.mass) * normal;
+		}
+
+		// Optional: stop tiny bouncing to prevent jitter
+		if (glm::abs(sphere.velocity.y) < 0.01f)
+			sphere.velocity.y = 0.0f;
 	}
 }
 
 void Renderer::UpdatePhysics(float deltaTime)
 {
-	// Retrieve all triangles from the terrain
+	// Gather all terrain triangles
 	std::vector<Triangle> allTriangles;
 	for (const MyMesh& terrain : t_meshes)
-	{
 		allTriangles.insert(allTriangles.end(), terrain.triangles.begin(), terrain.triangles.end());
-	}
 
-	// Update sphere positions based on velocity and check for collisions
 	for (size_t i = 0; i < c_physicsSpheres.size(); ++i)
 	{
 		auto& sphereA = c_physicsSpheres[i];
 
-		// Check for collision with each triangle
+		// Apply gravity as a force: F = m * g
+		sphereA.ApplyForce(gravity * sphereA.mass);
+
+		// Optional friction / drag (tangential damping)
+		if (sphereA.velocity.y < 1.0f)
+		{
+			glm::vec3 horizontalVel = glm::vec3(sphereA.velocity.x, 0.0f, sphereA.velocity.z);
+			glm::vec3 frictionForce = -horizontalVel * 0.05f;
+			sphereA.ApplyForce(frictionForce);
+		}
+
+		// Integrate motion
+		sphereA.Update(deltaTime);
+
+		// Terrain collision
 		for (const Triangle& triangle : allTriangles)
 		{
 			if (sphereTriangleCollision(sphereA.position, sphereA.radius, triangle))
-			{
 				handleTriangleCollision(sphereA, triangle);
-				break;
-			}
 		}
 
-		// Check for collisions with other spheres
+		// Sphere-to-sphere collisions
 		for (size_t j = i + 1; j < c_physicsSpheres.size(); ++j)
 		{
 			auto& sphereB = c_physicsSpheres[j];
-
 			if (TestSphereToSphereCollision(sphereA, sphereB))
-			{
-				handleCollision(sphereA, sphereB);
-			}
+				handleCollision(sphereA, sphereB); // now mass-aware
 		}
-
-		// Update sphere position
-		sphereA.update(deltaTime, gravity);
 	}
 }
+
 
 // Render the scene. Passed the delta time since last called.
 void Renderer::Render(const Helpers::Camera& camera, float deltaTime)

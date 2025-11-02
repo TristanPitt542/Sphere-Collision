@@ -2,6 +2,9 @@
 
 #include "ExternalLibraryHeaders.h"
 #include "Camera.h"
+#include "Renderer.h"
+#include <chrono>
+#include <unordered_map>
 
 class Renderer;
 struct GLFWwindow;
@@ -12,7 +15,7 @@ class Simulation
 private:
 	// A simple camera
 	std::shared_ptr<Helpers::Camera> m_camera;
-	int round = 0;
+
 	// The renderer
 	std::shared_ptr<Renderer> m_renderer;
 
@@ -26,9 +29,6 @@ public:
 	// Initialise this as well as the renderer, returns false on error
 	bool Initialise();
 	bool Restart();
-
-	int GetRound() { return round; }
-
 
 	// Update the simulation (and render) returns false if program should clse
 	bool Update(GLFWwindow* window);
